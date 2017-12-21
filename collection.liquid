@@ -1,0 +1,412 @@
+{% comment %} Special HERO area for Fresh Tee Club {% endcomment %}
+{% if collection.handle == 'fresh-tee-club' %}
+	{% include 'fresh-tee-club-hero' %}
+	
+{% endif %}
+
+
+{% comment %} 
+	Custom products grid output placement ability 
+{% endcomment %}
+{% assign products_outputted = false %}
+{% assign collection_content = collection.description | split : '[[products]]' %}
+
+{% if collection_content.size > 1 %}
+
+	{% include 'collection-products-in-content' %}
+{% else %}
+
+  {% paginate collection.products by settings.products-per-page %}
+
+  {% capture collection_url %}{% if collection.url.size == 0 %}/collections/all{% else %}{{ collection.url }}{% endif %}{% endcapture %}
+
+  <section class="content content-area">
+
+    {% include 'breadcrumbs' %}
+
+    <div class="page-title">
+      <span class="label">{{ collection.title }}</span>
+
+      {% if collection.all_tags.size > 0 %}
+      <div class="tags-wrap preload">
+        <select class="coll-filter styled-select tags-dropdown">
+          <option value="">All</option>
+          {% for tag in collection.all_tags %}
+            {% if current_tags contains tag %}
+              <option value="{{ tag | handle }}" selected>{{ tag }}</option>
+            {% else %}
+              <option value="{{ tag | handle }}">{{ tag }}</option>
+            {% endif %}
+          {% endfor %}
+        </select>
+
+        <ul class="tags">
+          {% for tag in collection.all_tags %}
+           <li class="tag show">{{ tag | link_to_tag: tag }}</li>
+          {% endfor %}
+        </ul>
+      </div>
+      {% endif %}
+    </div>
+
+    
+    
+    
+    {% if collection.products.size == 0 %}
+      <p class="empty">No products in this collection</p>
+    {% else %}
+
+    <!-- Collection Description -->
+      {% if collection.description.size > 0 or settings.collection-top-pagination %}
+        {% if collection.description.size > 0 or paginate.previous or paginate.next%}
+        <div class="collection-header clearfix">
+
+          <div class="description rte">{{ collection.description }}</div>
+
+          {% if settings.collection-top-pagination %}
+            {% if paginate.previous or paginate.next %}
+              {% include 'pagination' %}
+            {% endif %}
+          {% endif %}
+        </div>
+        {% endif %}
+      {% endif %}
+    
+    <!-- Product Filter [new] -->    
+    {% assign color_list = '' %}
+    {% assign size_list = '' %}
+
+    
+    <div class="hc-plp-filters">
+      <div class="hc-plp-filters-inner">
+        
+      	<div class="hc-plp-filter-buttons-wrap">
+          
+          <div class="hc-plp-active-filters">
+            <ul class="hc-plp-active-filters-list"></ul>
+          </div>
+          
+          <div class="hc-plp-filter-controls">
+            <input id="hc-plp-clear-filters" type="submit" class="" value="clear filters" style="display:none;">   
+            <div id="hc-plp-show-filters" >show filters</div>       	
+          </div>
+          
+      	</div>
+        
+      	<div class="hc-plp-filter-wrap">
+          <div class="hc-plp-filter-size"><p  class="hc-plp-filter-header">SIZE</p></div>	
+          <div class="hc-plp-filter-color"><p class="hc-plp-filter-header">COLOR</p></div>          	
+      	</div>
+        
+      </div>
+      	
+    </div>
+    <!-- /Product Filter [new] --> 
+
+    <!-- Product List -->
+      <ul class="product-list {{ settings.products-per-row }}">
+      	{% for product in collection.products %}
+        
+       
+        	{% include 'product-item' %}
+        
+      	{% endfor %}
+      </ul>
+    {% endif %}
+
+    {% if paginate.previous or paginate.next %}
+      {% include 'pagination' %}
+    {% endif %}
+    
+  </section>
+  {% endpaginate %}
+
+{% endif %}
+
+<!-- ONYX Filters Code -->
+<script>
+  	jQuery(document).ready(function($) {
+      
+      var filterTimeout;
+      var filterTimeoutLimit = 2500;
+      
+      // Element references
+      var $allProducts = $('.product');
+      var $colorFilter = $('.hc-plp-filter-color');
+      var $sizeFilter = $('.hc-plp-filter-size');
+      var $filterWrap = $('.hc-plp-filter-wrap');
+      var $clearFilters = $('#hc-plp-clear-filters');
+      var $showFilters = $('#hc-plp-show-filters');
+      var $activeFiltersWrap = $('.hc-plp-active-filters');
+      var $activeFilters = $('.hc-plp-active-filters-list');
+      
+      // Pull liquid tag lists & format them
+      var colorList = '{{color_list | split: ',' | uniq | join: ','}}'.split(',').filter(trimBlanks);
+      var sizeList = '{{size_list | split: ',' | uniq | join: ','}}'.split(',').filter(trimBlanks);
+      
+      
+      
+      // Helper Functions	 
+      // ===============
+      
+      // for cleaning liquid list
+      function trimBlanks(tag) {
+      	return tag !== '' && tag !== ' ';
+      }      
+      
+      function hideAllProducts() {
+      	$allProducts.addClass('hc-hidden-product')
+      }
+      
+      function showAllProducts() {
+      	$allProducts.removeClass('hc-hidden-product');
+      }     
+      
+      function toggleFilters() {
+        
+        clearTimeout(filterTimeout);
+      	$filterWrap.slideToggle();        
+        toggleFilterText();        
+      }
+      
+      // toggle between 'show filters' and 'hide filters' button text
+      function toggleFilterText() {
+        
+
+      
+        if ( $showFilters.text() == 'show filters' ) {
+        	$showFilters.text('hide filters').addClass('filters-showing');
+        } else {
+        	$showFilters.text('show filters').removeClass('filters-showing');
+        }        
+      }
+      
+      // close
+      function closeFilters() {
+        
+        // make sure the state is still calling for filters to close
+        if ( $('.hc-plp-filter:checked').length
+            && $('.hc-plp-filter-wrap').is(':visible') ) {
+        
+        	$filterWrap.slideUp();
+        	toggleFilterText();
+        }
+        clearTimeout(filterTimeout);
+      }
+      
+      function delayCloseFilters(force) {
+        if( typeof force === 'undefined' ) {force = false;}
+        
+        // set timer to close filters if a selection is made and the filters menu is open
+        if ( force 
+            || ( $('.hc-plp-filter:checked').length
+            	&& $('.hc-plp-filter-wrap').is(':visible') 
+                )
+        ) {
+          
+          	clearTimeout(filterTimeout);
+         	filterTimeout = setTimeout(closeFilters, filterTimeoutLimit);
+        }        
+      }
+      
+      
+      
+      // Filter Functions	 
+      // ===============
+      
+      // remove all filters, reveal all products
+      function clearFilters() {
+      	$('.hc-plp-filter').attr('checked', false);
+        
+        $clearFilters.hide();
+        setActiveFilters();
+        delayCloseFilters(true);
+        showAllProducts();
+      }
+      
+      // Activated when a filter checkbox is clicked
+      // determines the parameters to pass to the filter function
+      function handleFilterChange() {
+        
+        clearTimeout(filterTimeout);
+      
+        
+        // Build lists of classes to check products for
+        var colors = [];
+        var sizes = [];
+        
+        
+        // Check for active color filters
+        $('.hc-plp-color').each(function(i, obj) {          
+          if ($(this).is(':checked')) {
+            var color = '.color_' + $(this).val();
+          	colors.push( color )
+          }
+        });
+        
+        
+        // check for active size filters
+        $('.hc-plp-size').each(function(i, obj) {          
+          if ($(this).is(':checked')) {
+            var size = '.size_' + $(this).val();
+          	sizes.push( size )
+          }
+        });
+        
+        
+        // filter products, show/reveal $clearFilters button
+        if (colors.length < 1 && sizes.length < 1) {
+          
+          	$clearFilters.hide();
+        	showAllProducts();
+          
+        } else {
+          
+       		$clearFilters.show();
+        	// filter products by class lists
+        	filterProducts(colors, sizes);
+        }
+        
+        setActiveFilters();
+        delayCloseFilters();
+        
+      }      
+      
+      // Show products which match the filters
+      function filterProducts(colors, sizes) {
+        
+        hideAllProducts();
+        
+        var colorMatches = colors.join(',');
+        var sizeMatches = sizes.join(',');
+      
+        console.log($(colorMatches).is(sizeMatches));
+          
+          // if we're filtering by size AND color
+          if (colors.length && sizes.length) {
+            
+            // make an array of products matching the color
+            $(colorMatches).each(function(i, obj) {              
+              // if a color match is also a size match
+              if ( $(this).is(sizeMatches) ) {                
+                // reveal it
+              	$(this).removeClass('hc-hidden-product');
+              }
+            });
+            
+          // if we're just filtering by color  
+          } else if (colors.length) {            
+            // reveal all color matches
+          	$(colorMatches).removeClass('hc-hidden-product');
+            
+          // if we're just filtering by size
+          } else {            
+            // reveal all size matches
+          	$(sizeMatches).removeClass('hc-hidden-product');
+          }
+                
+      }
+      
+      // Builds the active filter list when active filters change
+      function setActiveFilters() {
+      
+      	$activeFilters.html('');
+        
+        // build active filter elements
+        $('.hc-plp-filter:checked').each(function(i, obj) {
+        	var activeFilter = '<li class="hc-plp-active-filter">' + $(this).val() + '<span class="hc-plp-remove-filter"> X</span></li>';
+          	$activeFilters.append(activeFilter);
+        });
+        
+        if ( $activeFilters.children().length ) {
+        	$activeFiltersWrap.show();
+          $clearFilters.show();
+        } else {
+        	$activeFiltersWrap.hide();
+          $clearFilters.hide();
+        }
+        
+      }
+      
+      // When the 'X' in an active filter is clicked
+      function handleRemoveFilter() {
+        
+        var filter = $(this).parent().text().replace(' X', '');        
+        $(this).parent().remove();
+        
+        $('.hc-plp-filter:checked').each(function(i, obj) {
+        	
+          if ( $(this).val() === filter ) {
+          	$(this).attr('checked', false);
+            handleFilterChange();
+          }
+          
+        });      
+      }
+  		
+      
+      
+      // Init
+      // ===============
+      
+      // Build color filter
+      colorList.forEach(function(color) {      
+        var color = '<input class="hc-plp-filter hc-plp-color" type="checkbox" name="color" value="' + color + '" id="hc-plp-color-' + color + '" /><label class="title" for="hc-plp-color-' + color + '">' + color + '</label>';        
+		$colorFilter.append( $(color) ) ;       
+      });
+      
+      // Build size filter
+      sizeList.forEach(function(size) {
+      	var size = '<input class="hc-plp-filter hc-plp-size" type="checkbox" name="size" value="' + size + '" id="hc-plp-size-' + size + '" /><label class="title" for="hc-plp-size-' + size + '">' + size + '</label>'; 
+        $sizeFilter.append ( $(size) );
+      });
+      
+      // Add arrow to show filters button
+      $('#hc-plp-show-filters').val('show filters \u2193');
+      
+      // Start with active filters hidden
+      $activeFiltersWrap.hide()
+      
+      
+      
+      // Event Binding
+      // ===============
+      
+      $('.hc-plp-filter').click(handleFilterChange);
+      $clearFilters.click(clearFilters);
+      $showFilters.click(toggleFilters);
+      $(window).scroll(delayCloseFilters);      
+      $(document).on('click', '.hc-plp-remove-filter', handleRemoveFilter);
+      
+      
+  	});
+</script>
+<!-- /ONYX Filters Code -->
+
+
+<script>
+  /* Product Tag Filters - Good for any number of filters on any type of collection pages */
+  /* Brought to you by Caroline Schnapp */
+  var collFilters = jQuery('.coll-filter');
+  collFilters.change(function() {
+    var newTags = [];
+    collFilters.each(function() {
+      if (jQuery(this).val()) {
+        newTags.push(jQuery(this).val());
+      }
+    });
+    if (newTags.length) {
+      var query = newTags.join('+');
+      window.location.href = jQuery('{{ 'tag' | link_to_tag: 'tag' }}').attr('href').replace('tag', query);
+    }
+    else {
+      {% if collection.handle %}
+      window.location.href = '/collections/{{ collection.handle }}';
+      {% elsif collection.products.first.type == collection.title %}
+      window.location.href = '{{ collection.title | url_for_type }}';
+      {% elsif collection.products.first.vendor == collection.title %}
+      window.location.href = '{{ collection.title | url_for_vendor }}';
+      {% endif %}
+    }
+  });
+</script>
